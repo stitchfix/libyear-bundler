@@ -4,6 +4,7 @@ require 'bundler'
 require 'libyear_bundler/calculators/libyear'
 require 'libyear_bundler/calculators/version_number_delta'
 require 'libyear_bundler/calculators/version_sequence_delta'
+require 'libyear_bundler/gem_source'
 require 'libyear_bundler/models/gem'
 
 module LibyearBundler
@@ -29,13 +30,14 @@ module LibyearBundler
             next
           end
 
+          source_url = gem_sources[match['name']] || 'https://rubygems.org/'
+          source = ::LibyearBundler::GemSource.for(source_url, http)
           gem = ::LibyearBundler::Models::Gem.new(
             match['name'],
             match['installed'],
             match['newest'],
             @release_date_cache,
-            http,
-            source: gem_sources[match['name']] || 'https://rubygems.org/'
+            source: source
           )
           gems.push(gem)
         end

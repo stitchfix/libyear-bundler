@@ -8,17 +8,11 @@ module LibyearBundler
     def initialize(data)
       raise TypeError unless data.is_a?(Hash)
       @data = data
-      uri = URI('https://rubygems.org')
-      @http = Net::HTTP.start(uri.host, uri.port, use_ssl: true)
     end
 
-    def [](name, version)
+    def fetch(name, version)
       key = format('%s-%s', name, version)
-      if @data.key?(key)
-        @data[key]
-      else
-        @data[key] = release_date(name, version)
-      end
+      @data[key] ||= yield
     end
 
     def empty?
@@ -45,16 +39,6 @@ module LibyearBundler
         File.write(path, content)
       rescue StandardError => e
         warn format('Unable to update cache: %s, %s', path, e.message)
-      end
-    end
-
-    private
-
-    def release_date(name, version)
-      if name == 'ruby'
-        Models::Ruby.release_date(version)
-      else
-        Models::Gem.release_date(name, version, @http)
       end
     end
   end

@@ -17,5 +17,28 @@ module LibyearBundler
         end
       end
     end
+
+    describe '#fetch' do
+      it 'returns cached value on hit without calling block' do
+        date = Date.new(2017, 1, 1)
+        cache = described_class.new({ 'json-2.1.0' => date })
+        block_called = false
+
+        result = cache.fetch('json', '2.1.0') { block_called = true }
+
+        expect(result).to eq(date)
+        expect(block_called).to be false
+      end
+
+      it 'yields and stores value on miss' do
+        date = Date.new(2017, 1, 1)
+        cache = described_class.new({})
+
+        result = cache.fetch('json', '2.1.0') { date }
+
+        expect(result).to eq(date)
+        expect(cache.fetch('json', '2.1.0') { raise 'should not be called' }).to eq(date)
+      end
+    end
   end
 end
