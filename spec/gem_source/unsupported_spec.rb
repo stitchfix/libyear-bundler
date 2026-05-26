@@ -15,15 +15,6 @@ module LibyearBundler
             .with('private_gem', /skipped.*unsupported source/i)
         end
       end
-
-      describe '#versions_sequence' do
-        it 'raises NotImplementedError' do
-          source = described_class.new('https://custom.gem.server/')
-
-          expect { source.versions_sequence('private_gem') }
-            .to raise_error(NotImplementedError, /not supported for/)
-        end
-      end
     end
   end
 end

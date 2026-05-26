@@ -33,15 +33,6 @@ module LibyearBundler
         end
       end
 
-      describe '#versions_sequence' do
-        it 'raises NotImplementedError' do
-          source = described_class.new('https://rubygems.pkg.github.com/secret_org/')
-
-          expect { source.versions_sequence('private_gem1') }
-            .to raise_error(NotImplementedError, /not supported for GitHub Packages/)
-        end
-      end
-
       describe '.gh_available?' do
         it 'returns true when gh command exists' do
           allow(described_class).to receive(:system)

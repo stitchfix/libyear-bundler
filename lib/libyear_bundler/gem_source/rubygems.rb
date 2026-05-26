@@ -41,16 +41,6 @@ module LibyearBundler
         parsed_response = JSON.parse(response.body)
         parsed_response.map { |version| version['number'] }
       end
-
-      private
-
-      def report_problem(gem_name, message)
-        @reported_gems ||= {}
-        @reported_gems[gem_name] ||= begin
-          $stderr.puts(message)
-          true
-        end
-      end
     end
   end
 end

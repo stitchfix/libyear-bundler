@@ -15,16 +15,6 @@ module LibyearBundler
       def versions_sequence(_gem_name)
         raise NotImplementedError, "versions_sequence is not supported for #{@source_url}"
       end
-
-      private
-
-      def report_problem(gem_name, message)
-        @reported_gems ||= {}
-        @reported_gems[gem_name] ||= begin
-          $stderr.puts(message)
-          true
-        end
-      end
     end
   end
 end

@@ -48,14 +48,6 @@ module LibyearBundler
         output = `gh api #{endpoint} 2>&1`
         [output, $CHILD_STATUS.success?]
       end
-
-      def report_problem(gem_name, message)
-        @reported_gems ||= {}
-        @reported_gems[gem_name] ||= begin
-          $stderr.puts(message)
-          true
-        end
-      end
     end
   end
 end
