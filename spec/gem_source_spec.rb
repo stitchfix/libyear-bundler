@@ -19,6 +19,16 @@ module LibyearBundler
         expect(source).to be_a(GemSource::GithubPackages)
       end
 
+      it 'returns Artifactory for *.jfrog.io URLs' do
+        http = instance_double(Net::HTTP)
+
+        source = described_class.for(
+          'https://my-org.jfrog.io/artifactory/api/gems/my-repo/', http
+        )
+
+        expect(source).to be_a(GemSource::Artifactory)
+      end
+
       it 'returns Unsupported for unknown sources' do
         http = instance_double(Net::HTTP)
 
