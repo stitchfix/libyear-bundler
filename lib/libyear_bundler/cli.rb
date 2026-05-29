@@ -1,3 +1,4 @@
+require "bundler"
 require "bundler/cli"
 require "bundler/cli/outdated"
 require "libyear_bundler/bundle_outdated"
@@ -39,26 +40,14 @@ module LibyearBundler
 
     private
 
-    def first_arg_is_gemfile?
-      !@argv.first.nil? && ::File.exist?(@argv.first)
-    end
-
-    def fallback_gemfile_exists?
-      # The envvar is set or
-      (!ENV["BUNDLE_GEMFILE"].nil? && ::File.exist?(ENV["BUNDLE_GEMFILE"])) ||
-        # Default to local Gemfile
-        ::File.exist?("Gemfile")
-    end
-
     def load_gemfile_path
-      if first_arg_is_gemfile?
-        @argv.first
-      elsif fallback_gemfile_exists?
-        '' # `bundle outdated` will default to local Gemfile
-      else
-        $stderr.puts "Gemfile not found"
-        exit E_NO_GEMFILE
+      if !@argv.first.nil? && ::File.exist?(@argv.first)
+        ENV["BUNDLE_GEMFILE"] = ::File.expand_path(@argv.first)
       end
+      ::Bundler.default_gemfile.to_s
+    rescue ::Bundler::GemfileNotFound => e
+      $stderr.puts e.message
+      exit E_NO_GEMFILE
     end
 
     def bundle_outdated
@@ -81,8 +70,7 @@ module LibyearBundler
     end
 
     def ruby
-      lockfile = @gemfile_path + '.lock'
-      ::LibyearBundler::Models::Ruby.new(lockfile, release_date_cache)
+      ::LibyearBundler::Models::Ruby.new(::Bundler.default_lockfile.to_s, release_date_cache)
     end
 
     def grand_total

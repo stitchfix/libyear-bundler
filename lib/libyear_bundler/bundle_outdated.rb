@@ -20,7 +20,7 @@ module LibyearBundler
 
     def execute
       gem_sources = load_gem_sources
-      
+
       begin
         bundle_outdated.lines.each_with_object([]) do |line, gems|
           match = BOP_FMT.match(line)
@@ -49,7 +49,7 @@ module LibyearBundler
     private
 
     def load_gem_sources
-      lockfile_path = @gemfile_path.sub(/Gemfile$/, 'Gemfile.lock')
+      lockfile_path = ::Bundler.default_lockfile.to_s
       return {} unless File.exist?(lockfile_path)
 
       lockfile_contents = File.read(lockfile_path)
@@ -65,9 +65,7 @@ module LibyearBundler
     end
 
     def bundle_outdated
-      stdout, stderr, status = Open3.capture3(
-        %(BUNDLE_GEMFILE="#{@gemfile_path}" bundle outdated --parseable)
-      )
+      stdout, stderr, status = Open3.capture3('bundle outdated --parseable')
       # Known statuses:
       # 0 - Nothing is outdated
       # 256 - Something is outdated

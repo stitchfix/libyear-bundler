@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'tmpdir'
 
 module LibyearBundler
   RSpec.describe BundleOutdated do
@@ -27,6 +28,38 @@ module LibyearBundler
 
         expect { bundle_outdated.execute }.to raise_error(StandardError, 'boom')
         expect(cache).to have_received(:clear)
+      end
+    end
+
+    describe '#load_gem_sources' do
+      around do |example|
+        original_bundle_gemfile = ENV['BUNDLE_GEMFILE']
+        example.run
+      ensure
+        if original_bundle_gemfile
+          ENV['BUNDLE_GEMFILE'] = original_bundle_gemfile
+        else
+          ENV.delete('BUNDLE_GEMFILE')
+        end
+      end
+
+      it 'loads per-gem sources from Bundler.default_lockfile' do
+        Dir.mktmpdir do |tmpdir|
+          gemfile = File.join(tmpdir, 'Gemfile')
+          lockfile = File.join(tmpdir, 'Gemfile.lock')
+          File.write(gemfile, "source 'https://rubygems.org'\n")
+          File.write(
+            lockfile,
+            File.read(File.expand_path('fixtures/github_packages/Gemfile.lock', __dir__))
+          )
+
+          ENV['BUNDLE_GEMFILE'] = gemfile
+          bundle_outdated = described_class.new(gemfile, nil)
+          sources = bundle_outdated.send(:load_gem_sources)
+
+          expect(sources['private_gem1']).to eq('https://rubygems.pkg.github.com/secret_org/')
+          expect(sources['json']).to eq('https://rubygems.org/')
+        end
       end
     end
   end

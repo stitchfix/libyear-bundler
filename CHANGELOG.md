@@ -11,7 +11,9 @@ Breaking changes:
 
 Added:
 
-- None
+- An extensible system for supporting arbitrary gem sources
+- Support for Github Packages
+- Support for Artifactory
 
 Fixed:
 
