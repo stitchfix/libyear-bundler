@@ -30,8 +30,17 @@ module LibyearBundler
         nil
       end
 
-      def versions_sequence(_gem_name)
-        raise NotImplementedError, 'versions_sequence is not supported for GitHub Packages'
+      def versions_sequence(gem_name)
+        unless gh_available?
+          report_problem(gem_name, "Skipped: #{gem_name} (private source, gh CLI not available)")
+          return []
+        end
+
+        report_problem(
+          gem_name,
+          "Skipped: #{gem_name} (releases metric is not supported for GitHub Packages)"
+        )
+        []
       end
 
       def self.gh_available?

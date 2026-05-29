@@ -12,8 +12,9 @@ module LibyearBundler
         nil
       end
 
-      def versions_sequence(_gem_name)
-        raise NotImplementedError, "versions_sequence is not supported for #{@source_url}"
+      def versions_sequence(gem_name)
+        report_problem(gem_name, "Skipped: #{gem_name} (unsupported source: #{@source_url})")
+        []
       end
     end
   end

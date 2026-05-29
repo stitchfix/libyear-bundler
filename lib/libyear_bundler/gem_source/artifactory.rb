@@ -47,11 +47,20 @@ module LibyearBundler
       def versions_sequence(gem_name)
         body = versions_sequence_aql(gem_name)
         response = aql_post(body)
-        raise "Artifactory AQL failed: #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+        unless response.is_a?(Net::HTTPSuccess)
+          report_problem(
+            gem_name,
+            "Versions not found: #{gem_name}: #{http_error_detail(response)}"
+          )
+          return []
+        end
 
         results = JSON.parse(response.body)['results'] || []
         versions = results.map { |item| extract_version(item['name'], gem_name) }.compact.uniq
         versions.sort_by { |v| Gem::Version.new(v) }.reverse
+      rescue StandardError => e
+        report_problem(gem_name, "Versions not found: #{gem_name}: #{e.inspect}")
+        []
       end
 
       private
@@ -128,8 +137,26 @@ module LibyearBundler
       end
 
       def extract_version(filename, gem_name)
-        pattern = /\A#{Regexp.escape(gem_name)}-(?<version>[^-]+)(-.*)?\.gem\z/
-        filename.match(pattern)&.[](:version)
+        prefix = "#{gem_name}-"
+        return nil unless filename.end_with?('.gem') && filename.start_with?(prefix)
+
+        version_part = filename[prefix.length..-5]
+        return nil if version_part.nil? || version_part.empty?
+
+        parse_version_from_filename_tail(version_part)
+      end
+
+      # Given the portion of a `.gem` filename after `name-`, returns the
+      # leading semver (e.g. `7.0.0` from `7.0.0-x86_64-linux`). Ignores
+      # unrelated artifacts that share a prefix (e.g. `datadog-ruby_core_source`
+      # when the gem name is `datadog`).
+      def parse_version_from_filename_tail(version_part)
+        segments = version_part.split('-')
+        segments.length.times do |i|
+          candidate = segments[0, i + 1].join('-')
+          return candidate if Gem::Version.correct?(candidate)
+        end
+        nil
       end
     end
   end

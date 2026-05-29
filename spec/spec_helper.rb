@@ -4,6 +4,8 @@ SimpleCov.start
 require 'libyear_bundler'
 require 'rspec'
 
+Dir[File.join(__dir__, 'support', '**', '*.rb')].sort.each { |f| require f }
+
 require 'webmock/rspec'
 WebMock.disable_net_connect!
 

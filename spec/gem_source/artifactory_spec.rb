@@ -1,12 +1,13 @@
-require 'base64'
 require 'spec_helper'
+require 'stringio'
 
 module LibyearBundler
   module GemSource
     RSpec.describe Artifactory do
       let(:source_url) { 'https://my-org.jfrog.io/artifactory/api/gems/my-repo/' }
+      let(:problems) { StringIO.new }
       let(:http) { instance_spy(Net::HTTP) }
-      let(:source) { described_class.new(source_url) }
+      let(:source) { build_gem_source(described_class, source_url, problems_io: problems) }
 
       before { HttpConnection.cache.set(source_url, http) }
 
@@ -28,9 +29,9 @@ module LibyearBundler
       describe 'source URL parsing' do
         it 'accepts a custom Artifactory context path and posts AQL to the correct path' do
           custom_url = 'https://stitchfix01.jfrog.io/stitchfix01/api/gems/eng-gems/'
-          custom_source = described_class.new(custom_url)
+          custom_problems = StringIO.new
+          custom_source = build_gem_source(described_class, custom_url, problems_io: custom_problems)
           HttpConnection.cache.set(custom_url, http)
-          allow(custom_source).to receive(:report_problem)
           stub_aql_response('{"results":[{"created":"2024-05-01T12:00:00.000Z"}]}') do |req|
             expect(req.path).to eq('/stitchfix01/api/search/aql')
             expect(req.body).to include(
@@ -130,26 +131,22 @@ module LibyearBundler
           allow(http).to receive(:request) do |req|
             req.path.include?('/api/search/aql') ? aql_response : versions_response
           end
-          allow(source).to receive(:report_problem)
 
           result = source.release_date('private_gem', '1.2.3')
 
           expect(result).to be_nil
-          expect(source).to have_received(:report_problem)
-            .with('private_gem', /Release date not found/)
+          expect(problems.string).to match(/Release date not found.*private_gem/)
         end
 
         it 'returns nil and reports when AQL responds with non-2xx' do
           response = instance_double(Net::HTTPNotFound, code: '404', body: '')
           allow(response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(false)
           allow(http).to receive(:request).and_return(response)
-          allow(source).to receive(:report_problem)
 
           result = source.release_date('private_gem', '1.2.3')
 
           expect(result).to be_nil
-          expect(source).to have_received(:report_problem)
-            .with('private_gem', /responded with 404 \(no credentials\)/)
+          expect(problems.string).to match(/responded with 404 \(no credentials\)/)
         end
 
         it 'includes response body and credential status when AQL responds with 401' do
@@ -161,13 +158,11 @@ module LibyearBundler
           )
           allow(response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(false)
           allow(http).to receive(:request).and_return(response)
-          allow(source).to receive(:report_problem)
 
           result = source.release_date('private_gem', '1.2.3')
 
           expect(result).to be_nil
-          expect(source).to have_received(:report_problem).with(
-            'private_gem',
+          expect(problems.string).to match(
             /responded with 401 \(credentials attached\).*Wrong username was used/
           )
         end
@@ -194,14 +189,25 @@ module LibyearBundler
 
           expect(source.versions_sequence('widget')).to eq(['10.0.0', '2.0.0', '1.10.0'])
         end
+
+        it 'ignores unrelated artifacts that share a name prefix' do
+          body = '{"results":[{"name":"datadog-2.0.0.gem"},' \
+                 '{"name":"datadog-ruby_core_source.gem"},' \
+                 '{"name":"json-2.1.0.gem"},{"name":"json-jwt-2.0.0.gem"}]}'
+          stub_aql_response(body)
+
+          expect(source.versions_sequence('datadog')).to eq(['2.0.0'])
+          expect(source.versions_sequence('json')).to eq(['2.1.0'])
+        end
       end
 
       describe 'authentication' do
         it 'sends Basic auth when Bundler.settings has credentials for the source URL' do
           stub_bundler_credentials('alice:secret')
-          allow(source).to receive(:report_problem)
           captured_request = nil
-          stub_aql_response('{"results":[]}') { |req| captured_request = req }
+          stub_aql_response('{"results":[{"created":"2024-05-01T12:00:00.000Z"}]}') do |req|
+            captured_request = req
+          end
 
           source.release_date('private_gem', '1.2.3')
 
@@ -211,9 +217,10 @@ module LibyearBundler
 
         it 'sends no Authorization header when Bundler.settings has no credentials' do
           stub_bundler_credentials(nil)
-          allow(source).to receive(:report_problem)
           captured_request = nil
-          stub_aql_response('{"results":[]}') { |req| captured_request = req }
+          stub_aql_response('{"results":[{"created":"2024-05-01T12:00:00.000Z"}]}') do |req|
+            captured_request = req
+          end
 
           source.release_date('private_gem', '1.2.3')
 
@@ -222,15 +229,16 @@ module LibyearBundler
 
         it 'URL-decodes user and password from Bundler.settings before Basic auth' do
           stub_bundler_credentials('user%40example.com:pa%3Ass')
-          allow(source).to receive(:report_problem)
           captured_request = nil
-          stub_aql_response('{"results":[]}') { |req| captured_request = req }
+          stub_aql_response('{"results":[{"created":"2024-05-01T12:00:00.000Z"}]}') do |req|
+            captured_request = req
+          end
 
           source.release_date('private_gem', '1.2.3')
 
           expect(captured_request['authorization']).to start_with('Basic ')
           expect(captured_request['authorization']).to include(
-            ::Base64.strict_encode64('user@example.com:pa:ss')
+            'dXNlckBleGFtcGxlLmNvbTpwYTpzcw==' # user@example.com:pa:ss
           )
         end
       end

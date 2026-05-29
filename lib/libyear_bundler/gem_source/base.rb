@@ -7,6 +7,10 @@ module LibyearBundler
     #
     # @api private
     class Base
+      # Configures a `ProblemReporter`, otherwise will default to a reporter writing
+      # to `$stderr`.
+      attr_writer :problem_reporter
+
       # @param _name [String] gem name
       # @param _version [String, Gem::Version]
       # @return [Date, nil] release date of the given version, or nil if
