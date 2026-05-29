@@ -5,6 +5,7 @@ require 'net/http'
 require 'uri'
 
 require 'libyear_bundler/gem_source/base'
+require 'libyear_bundler/gem_source/http_connection'
 
 module LibyearBundler
   module GemSource
@@ -12,9 +13,8 @@ module LibyearBundler
       SOURCE_URL_PATTERN =
         %r{\A(https?://[^/]+\.jfrog\.io/[^/]+)/api/gems/([^/]+)/?\z}.freeze
 
-      def initialize(source_url, http: nil)
+      def initialize(source_url)
         @source_url = source_url
-        @injected_http = http
         parse_source_url(source_url)
       end
 
@@ -124,7 +124,7 @@ module LibyearBundler
       end
 
       def http_client
-        @injected_http ||= Net::HTTP.start(@host, 443, use_ssl: true)
+        HttpConnection.for(@source_url)
       end
 
       def extract_version(filename, gem_name)

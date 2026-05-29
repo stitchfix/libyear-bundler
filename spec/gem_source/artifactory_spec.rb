@@ -5,8 +5,10 @@ module LibyearBundler
   module GemSource
     RSpec.describe Artifactory do
       let(:source_url) { 'https://my-org.jfrog.io/artifactory/api/gems/my-repo/' }
-      let(:http) { instance_double(Net::HTTP) }
-      let(:source) { described_class.new(source_url, http: http) }
+      let(:http) { instance_spy(Net::HTTP) }
+      let(:source) { described_class.new(source_url) }
+
+      before { HttpConnection.cache.set(source_url, http) }
 
       def stub_aql_response(body)
         response = instance_double(Net::HTTPSuccess, body: body)
@@ -26,7 +28,8 @@ module LibyearBundler
       describe 'source URL parsing' do
         it 'accepts a custom Artifactory context path and posts AQL to the correct path' do
           custom_url = 'https://stitchfix01.jfrog.io/stitchfix01/api/gems/eng-gems/'
-          custom_source = described_class.new(custom_url, http: http)
+          custom_source = described_class.new(custom_url)
+          HttpConnection.cache.set(custom_url, http)
           allow(custom_source).to receive(:report_problem)
           stub_aql_response('{"results":[{"created":"2024-05-01T12:00:00.000Z"}]}') do |req|
             expect(req.path).to eq('/stitchfix01/api/search/aql')
@@ -42,7 +45,7 @@ module LibyearBundler
 
         it 'raises ArgumentError for URLs that do not match the Artifactory gem source pattern' do
           expect do
-            described_class.new('https://my-org.jfrog.io/no-api/here/', http: http)
+            described_class.new('https://my-org.jfrog.io/no-api/here/')
           end.to raise_error(ArgumentError, /Unrecognized Artifactory source URL/)
         end
       end

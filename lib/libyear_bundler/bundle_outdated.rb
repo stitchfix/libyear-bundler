@@ -20,8 +20,8 @@ module LibyearBundler
 
     def execute
       gem_sources = load_gem_sources
-      uri = URI('https://rubygems.org')
-      Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+      
+      begin
         bundle_outdated.lines.each_with_object([]) do |line, gems|
           match = BOP_FMT.match(line)
           next if match.nil?
@@ -31,7 +31,7 @@ module LibyearBundler
           end
 
           source_url = gem_sources[match['name']] || 'https://rubygems.org/'
-          source = ::LibyearBundler::GemSource.for(source_url, http)
+          source = ::LibyearBundler::GemSource.for(source_url)
           gem = ::LibyearBundler::Models::Gem.new(
             match['name'],
             match['installed'],
@@ -41,6 +41,8 @@ module LibyearBundler
           )
           gems.push(gem)
         end
+      ensure
+        ::LibyearBundler::GemSource::HttpConnection.cache.clear
       end
     end
 
