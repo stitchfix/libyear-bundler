@@ -1,5 +1,5 @@
-require 'English'
 require 'json'
+require 'open3'
 
 require 'libyear_bundler/gem_source/base'
 
@@ -21,7 +21,7 @@ module LibyearBundler
         return nil unless success
 
         versions = JSON.parse(output)
-        version_data = versions.find { |v| v['name'] == gem_version.to_s }
+        version_data = versions.find { |v| v["name"] == gem_version.to_s }
         return nil unless version_data
 
         Date.parse(version_data['created_at'])
@@ -44,7 +44,8 @@ module LibyearBundler
       end
 
       def self.gh_available?
-        system('which gh > /dev/null 2>&1')
+        _stdout, status = Open3.capture2("which gh > /dev/null 2>&1")
+        status.success?
       end
 
       private
@@ -54,8 +55,8 @@ module LibyearBundler
       end
 
       def gh_api_call(endpoint)
-        output = `gh api #{endpoint} 2>&1`
-        [output, $CHILD_STATUS.success?]
+        output, status = Open3.capture2("gh api #{endpoint} 2>&1")
+        [output, status.success?]
       end
     end
   end

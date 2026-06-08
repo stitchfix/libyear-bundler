@@ -62,17 +62,21 @@ module LibyearBundler
 
       describe '.gh_available?' do
         it 'returns true when gh command exists' do
-          allow(described_class).to receive(:system)
-            .with('which gh > /dev/null 2>&1')
-            .and_return(true)
+          # https://docs.ruby-lang.org/en/master/Open3.html#method-i-capture2
+          # `capture2` returns an array [output, Process::Status]
+          allow(Open3).to receive(:capture2)
+            .with("which gh > /dev/null 2>&1")
+            .and_return(["", instance_spy(Process::Status, success?: true)])
 
           expect(described_class.gh_available?).to be true
         end
 
         it 'returns false when gh command does not exist' do
-          allow(described_class).to receive(:system)
-            .with('which gh > /dev/null 2>&1')
-            .and_return(false)
+          # https://docs.ruby-lang.org/en/master/Open3.html#method-i-capture2
+          # `capture2` returns an array [output, Process::Status]
+          allow(Open3).to receive(:capture2)
+            .with("which gh > /dev/null 2>&1")
+            .and_return(["", instance_spy(Process::Status, success?: false)])
 
           expect(described_class.gh_available?).to be false
         end

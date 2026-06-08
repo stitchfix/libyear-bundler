@@ -1,4 +1,3 @@
-require "English"
 require "open3"
 require 'bundler'
 require 'libyear_bundler/calculators/libyear'
