@@ -3,31 +3,20 @@ require 'tmpdir'
 
 module LibyearBundler
   RSpec.describe CLI do
-    around do |example|
-      original_bundle_gemfile = ENV['BUNDLE_GEMFILE']
-      ENV.delete('BUNDLE_GEMFILE')
-      example.run
-    ensure
-      if original_bundle_gemfile
-        ENV['BUNDLE_GEMFILE'] = original_bundle_gemfile
-      else
-        ENV.delete('BUNDLE_GEMFILE')
-      end
-    end
-
-    describe '#initialize' do
+    describe '#initialize', with_env: { 'BUNDLE_GEMFILE' => nil, 'BUNDLE_LOCKFILE' => nil } do
       it 'uses the CLI Gemfile argument over BUNDLE_GEMFILE' do
         Dir.mktmpdir do |tmpdir|
           gemfile_a = File.join(tmpdir, 'Gemfile')
           gemfile_b = File.join(tmpdir, 'other.rb')
+          gemfile_b_path = File.expand_path(gemfile_b)
+
           File.write(gemfile_a, "source 'https://rubygems.org'\n")
           File.write(gemfile_b, "source 'https://rubygems.org'\n")
 
           ENV['BUNDLE_GEMFILE'] = gemfile_a
           cli = described_class.new([gemfile_b])
 
-          expect(cli.instance_variable_get(:@gemfile_path)).to eq(File.expand_path(gemfile_b))
-          expect(ENV['BUNDLE_GEMFILE']).to eq(File.expand_path(gemfile_b))
+          expect(cli.gemfile_path).to eq(gemfile_b_path)
         end
       end
 
@@ -39,16 +28,14 @@ module LibyearBundler
           ENV['BUNDLE_GEMFILE'] = gemfile
           cli = described_class.new([])
 
-          expect(cli.instance_variable_get(:@gemfile_path)).to eq(File.expand_path(gemfile))
+          expect(cli.gemfile_path).to eq(File.expand_path(gemfile))
         end
       end
 
       it 'resolves the default Gemfile when no argument or env var is set' do
         cli = described_class.new([])
 
-        expect(cli.instance_variable_get(:@gemfile_path)).to eq(
-          File.expand_path('Gemfile', Dir.pwd)
-        )
+        expect(cli.gemfile_path).to eq(File.expand_path('Gemfile', Dir.pwd))
       end
 
       it 'exits with E_NO_GEMFILE when Bundler cannot find a Gemfile' do

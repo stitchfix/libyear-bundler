@@ -15,6 +15,8 @@ module LibyearBundler
     E_NO_GEMFILE = 2
     E_INVALID_CLI_ARG = 3
 
+    attr_reader :gemfile_path
+
     def initialize(argv)
       @options = ::LibyearBundler::Options.new(argv).parse
       # Command line flags are removed form `argv` in `Options` by
