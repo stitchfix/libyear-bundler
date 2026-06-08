@@ -40,21 +40,31 @@ module LibyearBundler
         meta = meta_line_summary(gem_or_ruby, gem_name_width)
 
         if @options.releases?
-          releases = format(FMT_RELEASES_COLUMN, gem_or_ruby.version_sequence_delta)
-          meta << releases
+          meta << format(FMT_RELEASES_COLUMN, metric_or_zero(gem_or_ruby, 'seq deltas') do
+            gem_or_ruby.version_sequence_delta
+          end)
         end
 
         if @options.versions?
-          versions = format(FMT_VERSIONS_COLUMN, gem_or_ruby.version_number_delta)
-          meta << versions
+          meta << format(FMT_VERSIONS_COLUMN, metric_or_zero(gem_or_ruby, 'version deltas') do
+            gem_or_ruby.version_number_delta
+          end)
         end
 
         if @options.libyears?
-          libyears = format(FMT_LIBYEARS_COLUMN, gem_or_ruby.libyears)
-          meta << libyears
+          meta << format(FMT_LIBYEARS_COLUMN, metric_or_zero(gem_or_ruby, 'libyears') do
+            gem_or_ruby.libyears
+          end)
         end
 
         @io.puts meta
+      end
+
+      def metric_or_zero(gem_or_ruby, metric)
+        yield
+      rescue StandardError => e
+        warn "Unable to calculate #{metric} for #{gem_or_ruby.name}: #{e}"
+        0
       end
 
       def meta_line_summary(gem_or_ruby, gem_name_width)

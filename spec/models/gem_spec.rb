@@ -3,10 +3,14 @@ require 'spec_helper'
 module LibyearBundler
   module Models
     RSpec.describe Gem do
+      def stub_source
+        instance_double(::LibyearBundler::GemSource::Base)
+      end
+
       describe '#installed_version' do
         it 'returns the installed version' do
           newest_version = '1.0.0'
-          gem = described_class.new(nil, newest_version, nil, nil, nil)
+          gem = described_class.new(nil, newest_version, nil, nil, source: stub_source)
           expect(gem.installed_version).to eq(::Gem::Version.new(newest_version))
         end
       end
@@ -14,8 +18,9 @@ module LibyearBundler
       describe '#installed_version_release_date' do
         it 'returns the release date of the installed version' do
           date = Date.new(2017, 1, 1)
-          gem = described_class.new(nil, '9.9.9', nil, nil, nil)
-          allow(described_class).to receive(:release_date).and_return(date)
+          source = stub_source
+          allow(source).to receive(:release_date).and_return(date)
+          gem = described_class.new(nil, '9.9.9', nil, nil, source: source)
           expect(gem.installed_version_release_date).to eq(date)
         end
       end
@@ -24,7 +29,7 @@ module LibyearBundler
         it 'returns the index' do
           installed_version = '1.0.0'
           newest_version = '2.0.0'
-          gem = described_class.new(nil, installed_version, newest_version, nil, nil)
+          gem = described_class.new(nil, installed_version, newest_version, nil, source: stub_source)
           allow(gem)
             .to receive(:versions_sequence)
             .and_return([newest_version, installed_version])
@@ -37,7 +42,7 @@ module LibyearBundler
           allow(::LibyearBundler::Calculators::Libyear)
             .to receive(:calculate)
             .and_return(1)
-          gem = described_class.new(nil, nil, nil, nil, nil)
+          gem = described_class.new(nil, nil, nil, nil, source: stub_source)
           allow(gem).to receive(:libyears).and_return(1)
         end
       end
@@ -45,7 +50,7 @@ module LibyearBundler
       describe '#name' do
         it 'returns the gem name' do
           gem_name = 'gem_name'
-          gem = described_class.new(gem_name, nil, nil, nil, nil)
+          gem = described_class.new(gem_name, nil, nil, nil, source: stub_source)
           expect(gem.name).to eq(gem_name)
         end
       end
@@ -53,7 +58,7 @@ module LibyearBundler
       describe '#newest_version' do
         it 'returns the newest version' do
           newest_version = '2.0.0'
-          gem = described_class.new(nil, nil, newest_version, nil, nil)
+          gem = described_class.new(nil, nil, newest_version, nil, source: stub_source)
           expect(gem.newest_version).to eq(::Gem::Version.new(newest_version))
         end
       end
@@ -61,10 +66,11 @@ module LibyearBundler
       describe '#newest_version_release_date' do
         it 'returns the release date of the newest version' do
           date = Date.new(2017, 1, 1)
-          gem = described_class.new('example', '9.9.0', '9.9.1', nil, nil)
-          allow(described_class).to receive(:release_date).and_return(date)
+          source = stub_source
+          allow(source).to receive(:release_date).and_return(date)
+          gem = described_class.new('example', '9.9.0', '9.9.1', nil, source: source)
           result = gem.newest_version_release_date
-          expect(described_class).to have_received(:release_date)
+          expect(source).to have_received(:release_date).with('example', ::Gem::Version.new('9.9.1'))
           expect(result).to eq(date)
         end
 
@@ -72,12 +78,13 @@ module LibyearBundler
           it 'uses cache' do
             date = Date.new(2017, 1, 1)
             cache = ::LibyearBundler::ReleaseDateCache.new({})
-            allow(cache).to receive(:[]).and_call_original
-            gem = described_class.new('example', '9.9.0', '9.9.1', cache, nil)
-            allow(described_class).to receive(:release_date).and_return(date)
+            allow(cache).to receive(:fetch).and_call_original
+            source = stub_source
+            allow(source).to receive(:release_date).and_return(date)
+            gem = described_class.new('example', '9.9.0', '9.9.1', cache, source: source)
             result = gem.newest_version_release_date
-            expect(described_class).to have_received(:release_date)
-            expect(cache).to have_received(:[]).with('example', ::Gem::Version.new('9.9.1'))
+            expect(source).to have_received(:release_date).with('example', ::Gem::Version.new('9.9.1'))
+            expect(cache).to have_received(:fetch).with('example', ::Gem::Version.new('9.9.1'))
             expect(result).to eq(date)
           end
         end
@@ -87,7 +94,7 @@ module LibyearBundler
         it 'returns the index' do
           installed_version = '1.0.0'
           newest_version = '2.0.0'
-          gem = described_class.new(nil, installed_version, newest_version, nil, nil)
+          gem = described_class.new(nil, installed_version, newest_version, nil, source: stub_source)
           allow(gem)
             .to receive(:versions_sequence)
             .and_return([newest_version, installed_version])
@@ -97,7 +104,7 @@ module LibyearBundler
 
       describe '#version_number_delta' do
         it 'returns an array of the major, minor, and patch versions out-of-date' do
-          gem = described_class.new(nil, '1.0.0', '2.0.0', nil, nil)
+          gem = described_class.new(nil, '1.0.0', '2.0.0', nil, source: stub_source)
           expect(gem.version_number_delta).to eq([1, 0, 0])
         end
       end
@@ -106,7 +113,7 @@ module LibyearBundler
         it 'returns the number of releases between versions' do
           installed_version = '1.0.0'
           newest_version = '2.0.0'
-          gem = described_class.new(nil, installed_version, newest_version, nil, nil)
+          gem = described_class.new(nil, installed_version, newest_version, nil, source: stub_source)
           allow(gem)
             .to receive(:versions_sequence)
             .and_return([newest_version, installed_version])

@@ -41,11 +41,7 @@ module LibyearBundler
         end
 
         def newest_version_release_date
-          if @release_date_cache.nil?
-            release_date(newest_version)
-          else
-            @release_date_cache[name, newest_version]
-          end
+          release_date(newest_version)
         end
 
         def newest_version_sequence_index
@@ -110,7 +106,9 @@ module LibyearBundler
         if @release_date_cache.nil?
           self.class.release_date(installed_version)
         else
-          @release_date_cache[name, installed_version]
+          @release_date_cache.fetch(name, installed_version) do
+            self.class.release_date(installed_version)
+          end
         end
       end
 
@@ -134,7 +132,13 @@ module LibyearBundler
       # Simply delegates to class method, but we still need it to conform to
       # the interface expected by `Report#meta_line_summary`.
       def newest_version_release_date
-        self.class.newest_version_release_date
+        if @release_date_cache.nil?
+          self.class.release_date(newest_version)
+        else
+          @release_date_cache.fetch(name, newest_version) do
+            self.class.release_date(newest_version)
+          end
+        end
       end
 
       def outdated?

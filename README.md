@@ -154,6 +154,22 @@ $ libyear-bundler Gemfile --json
 }
 ```
 
+## Supported Gem Sources
+
+ * RubyGems `https://rubygems.org`
+ * JFrog / Artifactory `https://<org>.jfrog.io/`
+ * Github Packages `https://rubygems.pkg.github.com`
+
+ ### Problem: My Gem Source isn't supported
+ Implement `LibyearBundler::GemSource::Base`'s interface as-necessary:
+
+ ```ruby
+def release_date(_name, _version)
+def versions_sequence(_name)
+```
+
+Then plug it in to `LibyearBundler::GemSource.for(source_url)`'s `case` statement.
+
 ## Contributing
 
 See CONTRIBUTING.md

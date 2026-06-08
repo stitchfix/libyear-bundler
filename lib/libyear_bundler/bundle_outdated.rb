@@ -1,24 +1,31 @@
-require "English"
 require "open3"
+require 'bundler'
 require 'libyear_bundler/calculators/libyear'
 require 'libyear_bundler/calculators/version_number_delta'
 require 'libyear_bundler/calculators/version_sequence_delta'
+require 'libyear_bundler/gem_source'
 require 'libyear_bundler/models/gem'
 
 module LibyearBundler
   # Responsible for getting all the data that goes into the `Report`.
   class BundleOutdated
     # Format of `bundle outdated --parseable` (BOP)
-    BOP_FMT = /\A(?<name>[^ ]+) \(newest (?<newest>[^,]+), installed (?<installed>[^,)]+)/
+    BOP_FMT = /\A(?<name>[^ ]+) \(newest (?<newest>[^,]+), installed (?<installed>[^,)]+)/.freeze
 
-    def initialize(gemfile_path, release_date_cache)
+    def initialize(gemfile_path, lockfile_path, release_date_cache = nil)
       @gemfile_path = gemfile_path
+      @lockfile_path = lockfile_path
       @release_date_cache = release_date_cache
+      @env = {
+        "BUNDLE_GEMFILE" => gemfile_path,
+        "BUNDLE_LOCKFILE" => lockfile_path
+      }.freeze
     end
 
     def execute
-      uri = URI('https://rubygems.org')
-      Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+      gem_sources = load_gem_sources
+
+      begin
         bundle_outdated.lines.each_with_object([]) do |line, gems|
           match = BOP_FMT.match(line)
           next if match.nil?
@@ -27,24 +34,41 @@ module LibyearBundler
             next
           end
 
+          source_url = gem_sources[match['name']] || 'https://rubygems.org/'
+          source = ::LibyearBundler::GemSource.for(source_url)
           gem = ::LibyearBundler::Models::Gem.new(
             match['name'],
             match['installed'],
             match['newest'],
             @release_date_cache,
-            http
+            source: source
           )
           gems.push(gem)
         end
+      ensure
+        ::LibyearBundler::GemSource::HttpConnection.cache.clear
       end
     end
 
     private
 
+    def load_gem_sources
+      return {} unless File.exist?(@lockfile_path)
+
+      lockfile_contents = File.read(@lockfile_path)
+      lockfile = Bundler::LockfileParser.new(lockfile_contents)
+
+      lockfile.specs.each_with_object({}) do |spec, hash|
+        if spec.source.respond_to?(:remotes)
+          hash[spec.name] = spec.source.remotes.first.to_s
+        end
+      end
+    rescue StandardError
+      {}
+    end
+
     def bundle_outdated
-      stdout, stderr, status = Open3.capture3(
-        %(BUNDLE_GEMFILE="#{@gemfile_path}" bundle outdated --parseable)
-      )
+      stdout, stderr, status = Open3.capture3(@env, 'bundle outdated --parseable')
       # Known statuses:
       # 0 - Nothing is outdated
       # 256 - Something is outdated

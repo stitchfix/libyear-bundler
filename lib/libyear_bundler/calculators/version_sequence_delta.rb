@@ -5,6 +5,8 @@ module LibyearBundler
     class VersionSequenceDelta
       class << self
         def calculate(installed_seq_index, newest_seq_index)
+          return 0 if installed_seq_index.nil? || newest_seq_index.nil?
+
           installed_seq_index - newest_seq_index
         end
       end

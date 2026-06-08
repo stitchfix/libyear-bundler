@@ -104,34 +104,30 @@ module LibyearBundler
         Models::Ruby.new(lockfile, nil)
       end
 
-      def stub_pg_gem
-        allow(Models::Gem).to(
-          receive(:release_date)
-            .with('pg', ::Gem::Version.new('1.5.0'), nil)
-            .and_return(::Date.new(2023, 4, 24))
-        )
-        allow(Models::Gem).to(
-          receive(:release_date)
-            .with('pg', ::Gem::Version.new('1.5.6'), nil)
-            .and_return(::Date.new(2024, 3, 1))
-        )
+      def stub_gem(name, installed, newest, version_dates)
+        source = instance_double(::LibyearBundler::GemSource::Base)
+        version_dates.each do |version, date|
+          allow(source).to receive(:release_date)
+            .with(name, ::Gem::Version.new(version))
+            .and_return(date)
+        end
+        Models::Gem.new(name, installed, newest, nil, source: source)
+      end
 
-        Models::Gem.new('pg', '1.5.0', '1.5.6', nil, nil)
+      def stub_pg_gem
+        stub_gem(
+          'pg', '1.5.0', '1.5.6',
+          '1.5.0' => ::Date.new(2023, 4, 24),
+          '1.5.6' => ::Date.new(2024, 3, 1)
+        )
       end
 
       def stub_rails_gem
-        allow(Models::Gem).to(
-          receive(:release_date)
-            .with('rails', ::Gem::Version.new('7.0.0'), nil)
-            .and_return(::Date.new(2021, 12, 15))
+        stub_gem(
+          'rails', '7.0.0', '7.1.3',
+          '7.0.0' => ::Date.new(2021, 12, 15),
+          '7.1.3' => ::Date.new(2024, 1, 16)
         )
-        allow(Models::Gem).to(
-          receive(:release_date)
-            .with('rails', ::Gem::Version.new('7.1.3'), nil)
-            .and_return(::Date.new(2024, 1, 16))
-        )
-
-        Models::Gem.new('rails', '7.0.0', '7.1.3', nil, nil)
       end
     end
   end
