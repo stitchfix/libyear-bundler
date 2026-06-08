@@ -34,12 +34,19 @@ module LibyearBundler
     describe '#load_gem_sources' do
       around do |example|
         original_bundle_gemfile = ENV['BUNDLE_GEMFILE']
+        original_bundle_lockfile = ENV['BUNDLE_LOCKFILE']
         example.run
       ensure
         if original_bundle_gemfile
           ENV['BUNDLE_GEMFILE'] = original_bundle_gemfile
         else
           ENV.delete('BUNDLE_GEMFILE')
+        end
+
+        if original_bundle_lockfile
+          ENV['BUNDLE_LOCKFILE'] = original_bundle_lockfile
+        else
+          ENV.delete('BUNDLE_LOCKFILE')
         end
       end
 
@@ -54,6 +61,13 @@ module LibyearBundler
           )
 
           ENV['BUNDLE_GEMFILE'] = gemfile
+
+          # Bundler >= 4 honors a previously set BUNDLE_LOCKFILE over the gemfile
+          # we just pointed at, which would make Bundler.default_lockfile resolve
+          # to the suite's own lockfile instead of our fixture. The CLI keeps these
+          # in sync in normal use; here we drive load_gem_sources directly without
+          # the CLI, so we clear it ourselves to isolate the fixture lockfile.
+          ENV.delete('BUNDLE_LOCKFILE')
           bundle_outdated = described_class.new(gemfile, nil)
           sources = bundle_outdated.send(:load_gem_sources)
 
