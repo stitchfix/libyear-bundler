@@ -23,7 +23,7 @@ module LibyearBundler
       # `OptionParser`, leaving non-flag command line arguments,
       # such as a Gemfile path
       @argv = argv
-      @gemfile_path = load_gemfile_path
+      @gemfile_path, @lockfile_path = resolve_bundle_paths
     end
 
     def run
@@ -42,28 +42,21 @@ module LibyearBundler
 
     private
 
-    def load_gemfile_path
+    def resolve_bundle_paths
       if !@argv.first.nil? && ::File.exist?(@argv.first)
         gemfile = ::File.expand_path(@argv.first)
-        ENV["BUNDLE_GEMFILE"] = gemfile
-        # Bundler >= 4 caches the lockfile location in BUNDLE_LOCKFILE and gives
-        # it precedence over the gemfile when resolving Bundler.default_lockfile.
-        # Here we point bundler to the intended lockfile so that it's in-sync
-        # with the gemfile argument. There are some cases where it's not, such as
-        # projects that generate lockfiles in non-standard locations, but this
-        # is a good default since the libyear-bundler command argument is the
-        # Gemfile path. This is gonna work for _almost_ all projects. If anyone
-        # has a better idea, please contribute a patch.
-        ENV["BUNDLE_LOCKFILE"] = "#{gemfile}.lock"
+        lockfile = "#{gemfile}.lock"
+        [gemfile, lockfile]
+      else
+        [::Bundler.default_gemfile.to_s, ::Bundler.default_lockfile.to_s]
       end
-      ::Bundler.default_gemfile.to_s
     rescue ::Bundler::GemfileNotFound => e
       $stderr.puts e.message
       exit E_NO_GEMFILE
     end
 
     def bundle_outdated
-      BundleOutdated.new(@gemfile_path, release_date_cache).execute
+      BundleOutdated.new(@gemfile_path, @lockfile_path, release_date_cache).execute
     end
 
     def release_date_cache
@@ -82,7 +75,7 @@ module LibyearBundler
     end
 
     def ruby
-      ::LibyearBundler::Models::Ruby.new(::Bundler.default_lockfile.to_s, release_date_cache)
+      ::LibyearBundler::Models::Ruby.new(@lockfile_path, release_date_cache)
     end
 
     def grand_total

@@ -10,11 +10,16 @@ module LibyearBundler
   # Responsible for getting all the data that goes into the `Report`.
   class BundleOutdated
     # Format of `bundle outdated --parseable` (BOP)
-    BOP_FMT = /\A(?<name>[^ ]+) \(newest (?<newest>[^,]+), installed (?<installed>[^,)]+)/
+    BOP_FMT = /\A(?<name>[^ ]+) \(newest (?<newest>[^,]+), installed (?<installed>[^,)]+)/.freeze
 
-    def initialize(gemfile_path, release_date_cache)
+    def initialize(gemfile_path, lockfile_path, release_date_cache = nil)
       @gemfile_path = gemfile_path
+      @lockfile_path = lockfile_path
       @release_date_cache = release_date_cache
+      @env = {
+        "BUNDLE_GEMFILE" => gemfile_path,
+        "BUNDLE_LOCKFILE" => lockfile_path
+      }.freeze
     end
 
     def execute
@@ -48,10 +53,9 @@ module LibyearBundler
     private
 
     def load_gem_sources
-      lockfile_path = ::Bundler.default_lockfile.to_s
-      return {} unless File.exist?(lockfile_path)
+      return {} unless File.exist?(@lockfile_path)
 
-      lockfile_contents = File.read(lockfile_path)
+      lockfile_contents = File.read(@lockfile_path)
       lockfile = Bundler::LockfileParser.new(lockfile_contents)
 
       lockfile.specs.each_with_object({}) do |spec, hash|
@@ -64,7 +68,7 @@ module LibyearBundler
     end
 
     def bundle_outdated
-      stdout, stderr, status = Open3.capture3('bundle outdated --parseable')
+      stdout, stderr, status = Open3.capture3(@env, 'bundle outdated --parseable')
       # Known statuses:
       # 0 - Nothing is outdated
       # 256 - Something is outdated
