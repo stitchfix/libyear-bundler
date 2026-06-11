@@ -202,6 +202,35 @@ module LibyearBundler
       end
 
       describe 'authentication' do
+        it 'prefers credentials from the BUNDLE_ env var over Bundler.settings',
+           with_env: { 'BUNDLE_MY___ORG__JFROG__IO' => 'env-user:env-token' } do
+          stub_bundler_credentials('config-user:config-token')
+          captured_request = nil
+          stub_aql_response('{"results":[{"created":"2024-05-01T12:00:00.000Z"}]}') do |req|
+            captured_request = req
+          end
+
+          source.release_date('private_gem', '1.2.3')
+
+          encoded = captured_request['authorization'].sub('Basic ', '')
+          decoded = encoded.unpack1('m')
+          expect(decoded).to eq('env-user:env-token')
+        end
+
+        it 'falls back to Bundler.settings when no env var is set',
+           with_env: { 'BUNDLE_MY___ORG__JFROG__IO' => nil } do
+          stub_bundler_credentials('alice:secret')
+          captured_request = nil
+          stub_aql_response('{"results":[{"created":"2024-05-01T12:00:00.000Z"}]}') do |req|
+            captured_request = req
+          end
+
+          source.release_date('private_gem', '1.2.3')
+
+          expect(captured_request['authorization']).to start_with('Basic ')
+          expect(captured_request['authorization']).to include('YWxpY2U6c2VjcmV0') # alice:secret
+        end
+
         it 'sends Basic auth when Bundler.settings has credentials for the source URL' do
           stub_bundler_credentials('alice:secret')
           captured_request = nil

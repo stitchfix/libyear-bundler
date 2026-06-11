@@ -129,7 +129,12 @@ module LibyearBundler
       end
 
       def credentials
-        ::Bundler.settings[@source_url] || ::Bundler.settings[@host]
+        credentials_from_env || ::Bundler.settings[@source_url] || ::Bundler.settings[@host]
+      end
+
+      def credentials_from_env
+        key = @host.gsub(".", "__").gsub("-", "___").upcase
+        ENV["BUNDLE_#{key}"]
       end
 
       def http_client
