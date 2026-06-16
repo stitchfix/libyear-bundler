@@ -35,4 +35,5 @@ Gem::Specification.new do |spec|
 
   # Development dependencies are specified in `/gemfiles`. See CONTRIBUTING.md
   # for details.
+  spec.add_development_dependency('rspec_junit_formatter')
 end
